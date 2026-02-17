@@ -25,6 +25,8 @@ export interface UploadFile {
   name?: string;
 }
 
+export type UploadExtraFields = Record<string, string | number | boolean | null | undefined>;
+
 class UploadServiceImpl {
   /**
    * Upload single file
@@ -33,6 +35,7 @@ class UploadServiceImpl {
     file: UploadFile,
     type: 'image' | 'video' | 'document',
     companyId?: string,
+    extraFields?: UploadExtraFields,
   ): Promise<UploadResponse | null> {
     try {
       const endpoint = companyId 
@@ -50,6 +53,14 @@ class UploadServiceImpl {
 
       // Add type
       formData.append('type', type);
+
+      // Add extra fields (e.g., document_type)
+      if (extraFields) {
+        Object.entries(extraFields).forEach(([key, value]) => {
+          if (value === undefined) return;
+          formData.append(key, value === null ? '' : String(value));
+        });
+      }
 
       const token = await this.getAuthToken();
       if (!token) {
@@ -85,6 +96,7 @@ class UploadServiceImpl {
     files: UploadFile[],
     type: 'image' | 'video' | 'document',
     companyId?: string,
+    extraFields?: UploadExtraFields,
   ): Promise<BulkUploadResponse | null> {
     try {
       const uploaded: UploadResponse[] = [];
@@ -92,7 +104,7 @@ class UploadServiceImpl {
 
       for (const file of files) {
         try {
-          const result = await this.uploadSingle(file, type, companyId);
+          const result = await this.uploadSingle(file, type, companyId, extraFields);
           if (result) {
             uploaded.push(result);
           }
@@ -120,6 +132,61 @@ class UploadServiceImpl {
     } catch (error) {
       console.error('Error getting auth token:', error);
       return null;
+    }
+  }
+
+  async deleteCompanyFile(companyId: string, fileId: string): Promise<boolean> {
+    try {
+      const token = await this.getAuthToken();
+      if (!token) throw new Error('Authentication required');
+
+      const response = await fetch(`${API_BASE_URL}/companies/${companyId}/upload/${fileId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Delete failed');
+      }
+      return true;
+    } catch (error) {
+      console.error('Delete company file error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update metadata for an already uploaded company file (e.g. document_type)
+   */
+  async updateCompanyFile(
+    companyId: string,
+    fileId: string,
+    fields: UploadExtraFields,
+  ): Promise<any | null> {
+    try {
+      const token = await this.getAuthToken();
+      if (!token) throw new Error('Authentication required');
+
+      const response = await fetch(`${API_BASE_URL}/companies/${companyId}/upload/${fileId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(fields),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error?.message || 'Update file failed');
+      }
+      return data || null;
+    } catch (error) {
+      console.error('Update company file error:', error);
+      throw error;
     }
   }
 }

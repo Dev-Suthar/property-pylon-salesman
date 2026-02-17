@@ -27,6 +27,7 @@ export function Input({
   style,
   ...props
 }: InputProps) {
+  const isMultiline = Boolean(props.multiline);
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -35,6 +36,7 @@ export function Input({
         <TextInput
           style={[
             styles.input,
+            isMultiline ? styles.textArea : undefined,
             leftIcon ? styles.inputWithLeftIcon : undefined,
             rightIcon ? styles.inputWithRightIcon : undefined,
             error ? styles.inputError : undefined,
@@ -75,6 +77,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 16,
     color: theme.foreground,
+  },
+  textArea: {
+    height: undefined,
+    minHeight: 96,
+    paddingTop: 12,
+    paddingBottom: 12,
+    textAlignVertical: 'top',
   },
   inputWithLeftIcon: {
     paddingLeft: 40,

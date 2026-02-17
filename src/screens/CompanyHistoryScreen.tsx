@@ -37,9 +37,12 @@ export default function CompanyHistoryScreen() {
   const limit = 20;
 
   const loadCompanies = useCallback(
-    async (pageNum: number = 1, reset: boolean = false) => {
+    async (pageNum: number = 1, reset: boolean = false, isRefresh: boolean = false) => {
       try {
-        if (pageNum === 1) {
+        if (isRefresh) {
+          // Don't set loading state during refresh to avoid UI flicker
+          setRefreshing(true);
+        } else if (pageNum === 1) {
           setLoading(true);
         } else {
           setLoadingMore(true);
@@ -98,10 +101,9 @@ export default function CompanyHistoryScreen() {
     loadCompanies(1, true);
   }, [searchQuery, statusFilter]);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    loadCompanies(1, true);
-  };
+  const handleRefresh = useCallback(() => {
+    loadCompanies(1, true, true);
+  }, [loadCompanies]);
 
   const loadMore = () => {
     if (!loadingMore && hasMore) {
@@ -258,7 +260,13 @@ export default function CompanyHistoryScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+            progressBackgroundColor={theme.card}
+          />
         }
         onScrollEndDrag={(e) => {
           const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
@@ -309,7 +317,9 @@ export default function CompanyHistoryScreen() {
                         size={24}
                         color={theme.primary}
                       />
-                      <CardTitle style={styles.companyName}>{company.name}</CardTitle>
+                      <CardTitle style={styles.companyName} numberOfLines={2} ellipsizeMode="tail">
+                        {company.name}
+                      </CardTitle>
                     </View>
                     <View
                       style={[
@@ -340,14 +350,18 @@ export default function CompanyHistoryScreen() {
                       <View style={styles.detailIconContainer}>
                         <Icon name="email-outline" size={18} color={theme.primary} />
                       </View>
-                      <Text style={styles.detailText}>{company.email}</Text>
+                      <Text style={styles.detailText} numberOfLines={1} ellipsizeMode="tail">
+                        {company.email}
+                      </Text>
                     </View>
                     {company.phone && (
                       <View style={styles.detailRow}>
                         <View style={styles.detailIconContainer}>
                           <Icon name="phone-outline" size={18} color={theme.primary} />
                         </View>
-                        <Text style={styles.detailText}>{company.phone}</Text>
+                        <Text style={styles.detailText} numberOfLines={1} ellipsizeMode="tail">
+                          {company.phone}
+                        </Text>
                       </View>
                     )}
                     <View style={styles.detailRow}>

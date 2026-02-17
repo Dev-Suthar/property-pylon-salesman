@@ -1,13 +1,14 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
   Image,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { AutocompleteDropdown } from 'react-native-autocomplete-dropdown';
 import { launchImageLibrary, ImagePickerResponse } from 'react-native-image-picker';
@@ -15,30 +16,23 @@ import { theme } from '../theme/colors';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import DocumentTypePicker, { DocumentType } from '../components/ui/DocumentTypePicker';
-import GenderPicker, { Gender } from '../components/ui/GenderPicker';
-import { companiesApi, CreateCompanyRequest } from '../services/api/companies';
-import { uploadApi, UploadFile } from '../services/api/upload';
-import { authService } from '../services/api/auth';
-import {
-  getNameError,
-  getEmailError,
-  getAdminPasswordError,
-  getPhoneError,
-  getAgeError,
-  getGenderError,
-  getAddressError,
-  getTeamMembersError,
-  getYearsOfExperienceError,
-} from '../utils/validation';
+import { companiesApi, Company, UpdateCompanyRequest } from '../services/api/companies';
+import { getNameError, getEmailError, getPhoneError } from '../utils/validation';
 import { showToast } from '../utils/toast';
+import { uploadApi, UploadFile } from '../services/api/upload';
+import GenderPicker, { Gender } from '../components/ui/GenderPicker';
+import DocumentTypePicker, { DocumentType } from '../components/ui/DocumentTypePicker';
 
 const GOOGLE_MAPS_API_KEY = 'AIzaSyBEx5pLE46IyorCWTQ9CizWEpu4e8hP5NQ';
 
-export default function OnboardCompanyScreen() {
+export default function EditCompanyScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const { companyId, company: initialCompany } = (route.params as any) || {};
+
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<CreateCompanyRequest>({
+  const [fetching, setFetching] = useState(false);
+  const [formData, setFormData] = useState<UpdateCompanyRequest>({
     name: '',
     email: '',
     phone: '',
@@ -46,55 +40,67 @@ export default function OnboardCompanyScreen() {
     team_members: undefined,
     years_of_experience: undefined,
     office_photo_url: undefined,
-    initial_user: {
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      age: undefined,
-      gender: undefined,
-      password: '',
-    },
+    is_active: true,
   });
-  const [showPassword, setShowPassword] = useState(false);
+  const [officePhoto, setOfficePhoto] = useState<{
+    uri: string;
+    type: string;
+    fileName: string;
+  } | null>(null);
+  const [adminUserId, setAdminUserId] = useState<string | null>(null);
+  const [adminUser, setAdminUser] = useState<{
+    name: string;
+    email: string;
+    phone?: string;
+    address?: string;
+    age?: number;
+    gender?: string;
+  }>({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    age: undefined,
+    gender: undefined,
+  });
+
+  // Identity proof documents
+  const [documentType, setDocumentType] = useState<DocumentType | undefined>();
+  const [existingDocuments, setExistingDocuments] = useState<
+    Array<{
+      id: string;
+      url: string;
+      thumbnail_url?: string;
+      mime_type: string;
+      document_type?: string;
+      created_at: string;
+    }>
+  >([]);
+  const [newIdentityFiles, setNewIdentityFiles] = useState<
+    Array<{
+      uri: string;
+      type: string;
+      fileName: string;
+      documentType: DocumentType;
+    }>
+  >([]);
   const [errors, setErrors] = useState<{
     name?: string;
     email?: string;
     phone?: string;
     team_members?: string;
     years_of_experience?: string;
-    initial_user?: {
+    officePhoto?: string;
+    adminUser?: {
       name?: string;
       email?: string;
       phone?: string;
       address?: string;
       age?: string;
       gender?: string;
-      password?: string;
     };
     identityProof?: string;
-    officePhoto?: string;
   }>({});
-
-  // Identity proof state
-  const [documentType, setDocumentType] = useState<DocumentType | undefined>();
-  const [identityProofFiles, setIdentityProofFiles] = useState<
-    Array<{
-      uri: string;
-      type: string;
-      fileName: string;
-      documentType: DocumentType;
-      id?: string;
-    }>
-  >([]);
-  const [uploadingFiles, setUploadingFiles] = useState(false);
-
-  // Office photo state
-  const [officePhoto, setOfficePhoto] = useState<{
-    uri: string;
-    type: string;
-    fileName: string;
-  } | null>(null);
 
   // Company address autocomplete
   const [companyAddressSearch, setCompanyAddressSearch] = useState('');
@@ -104,13 +110,139 @@ export default function OnboardCompanyScreen() {
   const [addressLoading, setAddressLoading] = useState(false);
   const addressSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // User address autocomplete
+  // Admin user address autocomplete
   const [userAddressSearch, setUserAddressSearch] = useState('');
   const [userAddressSuggestions, setUserAddressSuggestions] = useState<
     Array<{ id: string; title: string }>
   >([]);
   const [userAddressLoading, setUserAddressLoading] = useState(false);
   const userAddressSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (initialCompany) {
+      setFormData({
+        name: initialCompany.name || '',
+        email: initialCompany.email || '',
+        phone: initialCompany.phone || '',
+        address: initialCompany.address || '',
+        team_members: initialCompany.team_members,
+        years_of_experience: initialCompany.years_of_experience,
+        office_photo_url: initialCompany.office_photo_url,
+        is_active: initialCompany.is_active ?? true,
+      });
+      setCompanyAddressSearch(initialCompany.address || '');
+      const initialAdminAddress =
+        (initialCompany as any)?.users?.find?.((u: any) => u.role === 'admin')?.address ||
+        (initialCompany as any)?.users?.[0]?.address ||
+        '';
+      if (initialAdminAddress) {
+        setUserAddressSearch(initialAdminAddress);
+      }
+    }
+    // Always load full details (users + documents) when we have companyId
+    if (companyId) {
+      loadCompany();
+    }
+  }, [companyId, initialCompany]);
+
+  // Ensure dropdown text shows loaded values
+  useEffect(() => {
+    if (!companyAddressSearch && formData.address) {
+      setCompanyAddressSearch(formData.address);
+    }
+  }, [companyAddressSearch, formData.address]);
+
+  useEffect(() => {
+    if (!userAddressSearch && adminUser.address) {
+      setUserAddressSearch(adminUser.address);
+    }
+  }, [userAddressSearch, adminUser.address]);
+
+  // Log suggestions state changes
+  useEffect(() => {
+    console.log('[Company Address] Suggestions state changed:', {
+      count: companyAddressSuggestions.length,
+      suggestions: companyAddressSuggestions,
+      loading: addressLoading,
+    });
+  }, [companyAddressSuggestions, addressLoading]);
+
+  useEffect(() => {
+    console.log('[User Address] Suggestions state changed:', {
+      count: userAddressSuggestions.length,
+      suggestions: userAddressSuggestions,
+      loading: userAddressLoading,
+    });
+  }, [userAddressSuggestions, userAddressLoading]);
+
+  const loadCompany = async () => {
+    if (!companyId) return;
+
+    setFetching(true);
+    try {
+      const company = await companiesApi.getDetails(companyId);
+      if (company) {
+        setFormData({
+          name: company.name || '',
+          email: company.email || '',
+          phone: company.phone || '',
+          address: company.address || '',
+          team_members: company.team_members,
+          years_of_experience: company.years_of_experience,
+          office_photo_url: company.office_photo_url,
+          is_active: company.is_active ?? true,
+        });
+        setCompanyAddressSearch(company.address || '');
+
+        // Admin user (prefer role=admin)
+        const users = company.users || [];
+        const admin = users.find(u => u.role === 'admin') || users[0];
+        if (admin) {
+          setAdminUserId(admin.id);
+          setAdminUser({
+            name: admin.name || '',
+            email: admin.email || '',
+            phone: admin.phone || '',
+            address: admin.address || '',
+            age: admin.age,
+            gender: admin.gender,
+          });
+          setUserAddressSearch(admin.address || '');
+        }
+
+        const docs =
+          (company.documents || []).map(d => ({
+            id: d.id,
+            url: d.url,
+            thumbnail_url: d.thumbnail_url ?? undefined,
+            mime_type: d.mime_type,
+            document_type: d.document_type,
+            created_at: d.created_at,
+          })) || [];
+
+        setExistingDocuments(docs);
+
+        // Pre-select document type based on the first existing document (if any)
+        if (docs.length > 0) {
+          if (docs[0].document_type) {
+            setDocumentType(docs[0].document_type as DocumentType);
+          } else {
+            // Backend sometimes returns null; still show a selected value in UI
+            setDocumentType('Other');
+          }
+        }
+      } else {
+        showToast.error('Company not found');
+      }
+    } catch (error: any) {
+      console.error('Load company error:', error);
+      const errorMessage =
+        error?.error?.message || error?.message || 'Failed to load company';
+      showToast.error(errorMessage);
+    } finally {
+      setFetching(false);
+    }
+  };
 
   const fetchCompanyAddressSuggestions = (query: string) => {
     console.log('[Company Address] fetchCompanyAddressSuggestions called with query:', query);
@@ -230,73 +362,22 @@ export default function OnboardCompanyScreen() {
     // Trim all input values before validation
     const trimmedFormData = {
       ...formData,
-      name: formData.name.trim(),
-      email: formData.email.trim(),
+      name: formData.name?.trim() || '',
+      email: formData.email?.trim() || '',
       phone: formData.phone?.trim() || '',
       address: formData.address?.trim() || '',
-      team_members: formData.team_members,
-      years_of_experience: formData.years_of_experience,
-      initial_user: {
-        ...formData.initial_user,
-        name: formData.initial_user.name.trim(),
-        email: formData.initial_user.email.trim(),
-        phone: formData.initial_user.phone?.trim() || '',
-        address: formData.initial_user.address?.trim() || '',
-        age: formData.initial_user.age,
-        gender: formData.initial_user.gender,
-        password: formData.initial_user.password.trim(),
-      },
     };
 
     // Validation
     const nameError = getNameError(trimmedFormData.name);
     const emailError = getEmailError(trimmedFormData.email);
     const phoneError = getPhoneError(trimmedFormData.phone || '');
-    const teamMembersError = getTeamMembersError(trimmedFormData.team_members);
-    const yearsOfExperienceError = getYearsOfExperienceError(trimmedFormData.years_of_experience);
-    const userNameError = getNameError(trimmedFormData.initial_user.name);
-    const userEmailError = getEmailError(trimmedFormData.initial_user.email);
-    const userPhoneError = getPhoneError(trimmedFormData.initial_user.phone || '');
-    const userAddressError = getAddressError(trimmedFormData.initial_user.address);
-    const userAgeError = getAgeError(trimmedFormData.initial_user.age);
-    const userGenderError = getGenderError(trimmedFormData.initial_user.gender);
-    const userPasswordError = getAdminPasswordError(trimmedFormData.initial_user.password);
-    const identityProofError =
-      identityProofFiles.length === 0
-        ? 'Please upload at least one identity proof document'
-        : undefined;
 
-    if (
-      nameError ||
-      emailError ||
-      phoneError ||
-      teamMembersError ||
-      yearsOfExperienceError ||
-      userNameError ||
-      userEmailError ||
-      userPhoneError ||
-      userAddressError ||
-      userAgeError ||
-      userGenderError ||
-      userPasswordError ||
-      identityProofError
-    ) {
+    if (nameError || emailError || phoneError) {
       setErrors({
         name: nameError,
         email: emailError,
         phone: phoneError,
-        team_members: teamMembersError,
-        years_of_experience: yearsOfExperienceError,
-        initial_user: {
-          name: userNameError,
-          email: userEmailError,
-          phone: userPhoneError,
-          address: userAddressError,
-          age: userAgeError,
-          gender: userGenderError,
-          password: userPasswordError,
-        },
-        identityProof: identityProofError,
       });
       return;
     }
@@ -305,171 +386,109 @@ export default function OnboardCompanyScreen() {
     setErrors({});
 
     try {
-      // Get current user to include salesman_id
-      const currentUser = await authService.getCurrentUser();
-      if (!currentUser) {
-        showToast.error('User session expired. Please login again.');
-        return;
+      // Upload office photo if changed
+      let officePhotoUrl = trimmedFormData.office_photo_url;
+      if (officePhoto) {
+        const uploadFile: UploadFile = {
+          uri: officePhoto.uri,
+          type: officePhoto.type,
+          fileName: officePhoto.fileName,
+        };
+        const uploadResult = await uploadApi.uploadSingle(
+          uploadFile,
+          'image',
+          companyId || initialCompany?.id,
+        );
+        if (uploadResult?.url) {
+          officePhotoUrl = uploadResult.url;
+        }
       }
 
-      // Step 1: Create company with trimmed data and salesman_id
-      const companyDataWithSalesmanId: CreateCompanyRequest = {
-        ...trimmedFormData,
-        salesman_id: currentUser.id, // Include salesman_id in request
+      const updateData: UpdateCompanyRequest = {
+        name: trimmedFormData.name,
+        email: trimmedFormData.email,
+        phone: trimmedFormData.phone || undefined,
+        address: trimmedFormData.address || undefined,
+        team_members: trimmedFormData.team_members,
+        years_of_experience: trimmedFormData.years_of_experience,
+        office_photo_url: officePhotoUrl,
+        is_active: formData.is_active,
       };
 
-      const response = await companiesApi.create(companyDataWithSalesmanId);
+      const response = await companiesApi.update(companyId || initialCompany?.id, updateData);
       if (!response) {
-        throw new Error('Failed to create company');
+        throw new Error('Failed to update company');
       }
 
-      // Step 2: Upload identity proof documents
-      if (identityProofFiles.length > 0) {
-        setUploadingFiles(true);
-        try {
-          const uploadPromises = identityProofFiles.map(async (file) => {
+      // Update admin user fields (if available)
+      if (adminUserId && (companyId || initialCompany?.id)) {
+        await companiesApi.updateCompanyUser(companyId || initialCompany?.id, adminUserId, {
+          name: adminUser.name?.trim(),
+          email: adminUser.email?.trim(),
+          phone: adminUser.phone?.trim() || undefined,
+          address: adminUser.address?.trim() || undefined,
+          age: adminUser.age,
+          gender: adminUser.gender,
+        });
+      }
+
+      // Upload new identity proof documents
+      if (newIdentityFiles.length > 0) {
+        await Promise.all(
+          newIdentityFiles.map(async (file) => {
             const uploadFile: UploadFile = {
               uri: file.uri,
               type: file.type,
               fileName: file.fileName,
             };
-            return await uploadApi.uploadSingle(uploadFile, 'document', response.company.id, {
-              document_type: file.documentType,
-            });
-          });
-
-          const uploadResults = await Promise.all(uploadPromises);
-          const failedUploads = uploadResults.filter((result) => !result);
-
-          if (failedUploads.length > 0) {
-            showToast.error(
-              `${failedUploads.length} file(s) failed to upload. Company created but documents may be missing.`,
+            return uploadApi.uploadSingle(
+              uploadFile,
+              'document',
+              companyId || initialCompany?.id,
+              { document_type: file.documentType },
             );
-          }
-        } catch (uploadError: any) {
-          console.error('Upload error:', uploadError);
-          showToast.warning(
-            'Company created but some documents failed to upload. You can add them later.',
-          );
-        } finally {
-          setUploadingFiles(false);
-        }
+          }),
+        );
       }
 
-      // Step 3: Upload office photo
-      if (officePhoto) {
-        setUploadingFiles(true);
-        try {
-          const uploadFile: UploadFile = {
-            uri: officePhoto.uri,
-            type: officePhoto.type,
-            fileName: officePhoto.fileName,
-          };
-          const uploadResult = await uploadApi.uploadSingle(uploadFile, 'image', response.company.id);
-          if (uploadResult?.url) {
-            // Persist the photo URL on the company record
-            await companiesApi.update(response.company.id, {
-              office_photo_url: uploadResult.url,
-            });
-          }
-        } catch (uploadError: any) {
-          console.error('Office photo upload error:', uploadError);
-          showToast.warning(
-            'Company created but office photo failed to upload. You can add it later.',
-          );
-        } finally {
-          setUploadingFiles(false);
-        }
-      }
-
-      if (identityProofFiles.length > 0 || officePhoto) {
-        showToast.success('Company and files uploaded successfully!');
-      } else {
-        showToast.success('Company created successfully!');
-      }
-
-      (navigation as any).navigate('CompanyDetails', { data: response });
+      showToast.success('Company updated successfully!');
+      // Navigate back to History listing screen
+      (navigation as any).navigate('Main', {
+        screen: 'CompanyHistory',
+      });
     } catch (error: any) {
-      console.error('Create company error:', error);
-      
+      console.error('Update company error:', error);
+
       // Handle API validation errors
       if (error.response?.data?.error || error.error) {
         const apiError = error.response?.data?.error || error.error;
         const errorCode = apiError.code;
         const errorMessage = apiError.message;
 
-        // Map backend validation errors to form fields
         if (errorCode === 'VALIDATION_ERROR') {
-          // Check if error message contains field-specific information
-          if (errorMessage.includes('name') && errorMessage.includes('email') && errorMessage.includes('password')) {
-            // General validation error - could be any of the required fields
-            setErrors(prev => ({
-              ...prev,
-              initial_user: {
-                ...prev.initial_user,
-                password: errorMessage.includes('password') ? 'Password is required' : prev.initial_user?.password,
-              },
-            }));
-          } else if (errorMessage.includes('Password must be at least 8 characters')) {
-            setErrors(prev => ({
-              ...prev,
-              initial_user: {
-                ...prev.initial_user,
-                password: 'Password must be at least 8 characters long',
-              },
-            }));
-          } else if (errorMessage.includes('email')) {
-            if (errorMessage.includes('company')) {
-              setErrors(prev => ({ ...prev, email: 'Company email is invalid or already exists' }));
-            } else {
-              setErrors(prev => ({
-                ...prev,
-                initial_user: {
-                  ...prev.initial_user,
-                  email: 'User email is invalid or already exists',
-                },
-              }));
-            }
+          if (errorMessage.includes('email')) {
+            setErrors(prev => ({ ...prev, email: 'Email is invalid or already exists' }));
           } else if (errorMessage.includes('name')) {
-            if (errorMessage.includes('company')) {
-              setErrors(prev => ({ ...prev, name: 'Company name is required' }));
-            } else {
-              setErrors(prev => ({
-                ...prev,
-                initial_user: {
-                  ...prev.initial_user,
-                  name: 'User name is required',
-                },
-              }));
-            }
+            setErrors(prev => ({ ...prev, name: 'Company name is required' }));
           } else {
-            // Generic validation error - show in toast
             showToast.error(errorMessage);
           }
         } else if (errorCode === 'DUPLICATE_ENTRY') {
-          if (errorMessage.includes('Company')) {
+          if (errorMessage.includes('email')) {
             setErrors(prev => ({ ...prev, email: 'Company with this email already exists' }));
-          } else if (errorMessage.includes('User')) {
-            setErrors(prev => ({
-              ...prev,
-              initial_user: {
-                ...prev.initial_user,
-                email: 'User with this email already exists',
-              },
-            }));
           } else {
             showToast.error(errorMessage);
           }
         } else if (errorCode === 'FORBIDDEN') {
-          showToast.error('You do not have permission to create companies');
-        } else if (errorCode === 'NETWORK_ERROR' || errorCode === 'TIMEOUT') {
-          showToast.error('Network error. Please check your connection and try again.');
+          showToast.error('You do not have permission to update this company');
+        } else if (errorCode === 'NOT_FOUND') {
+          showToast.error('Company not found');
+          navigation.goBack();
         } else {
-          showToast.error(errorMessage || 'Failed to create company. Please try again.');
+          showToast.error(errorMessage || 'Failed to update company. Please try again.');
         }
       } else {
-        // Generic error handling
-        const errorMessage = error.message || 'Failed to create company. Please try again.';
+        const errorMessage = error.message || 'Failed to update company. Please try again.';
         showToast.error(errorMessage);
       }
     } finally {
@@ -477,123 +496,24 @@ export default function OnboardCompanyScreen() {
     }
   };
 
-  const handleInputChange = (field: string, value: string | number | undefined) => {
-    if (field.startsWith('initial_user.')) {
-      const userField = field.replace('initial_user.', '');
-      // Handle numeric fields
-      if (userField === 'age') {
-        const numValue = value === '' || value === undefined ? undefined : (typeof value === 'string' ? parseInt(value, 10) : value);
-        setFormData(prev => ({
-          ...prev,
-          initial_user: {
-            ...prev.initial_user,
-            [userField]: isNaN(numValue as number) ? undefined : numValue,
-          },
-        }));
-      } else {
-      setFormData(prev => ({
-        ...prev,
-        initial_user: {
-          ...prev.initial_user,
-          [userField]: value,
-        },
-      }));
-      }
+  const handleInputChange = (field: keyof UpdateCompanyRequest, value: string | boolean) => {
+    // numeric fields
+    if (field === 'team_members' || field === 'years_of_experience') {
+      const str = String(value);
+      const num =
+        str.trim().length === 0
+          ? undefined
+          : field === 'team_members'
+            ? parseInt(str, 10)
+            : parseFloat(str);
+      setFormData(prev => ({ ...prev, [field]: isNaN(num as number) ? undefined : (num as any) }));
     } else {
-      // Handle numeric fields for company
-      if (field === 'team_members' || field === 'years_of_experience') {
-        const numValue = value === '' || value === undefined ? undefined : (typeof value === 'string' ? parseFloat(value) : value);
-        setFormData(prev => ({
-          ...prev,
-          [field]: isNaN(numValue as number) ? undefined : numValue,
-        }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
-      }
+      setFormData(prev => ({ ...prev, [field]: value as any }));
     }
-
     // Clear errors
-    if (field.startsWith('initial_user.')) {
-      const userField = field.replace('initial_user.', '');
-      if (errors.initial_user?.[userField as keyof typeof errors.initial_user]) {
-        setErrors(prev => ({
-          ...prev,
-          initial_user: {
-            ...prev.initial_user,
-            [userField]: undefined,
-          },
-        }));
-      }
-    } else if (errors[field as keyof typeof errors]) {
+    if (errors[field as keyof typeof errors]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }
-  };
-
-  const handleGenderChange = (gender: Gender) => {
-    setFormData(prev => ({
-      ...prev,
-      initial_user: {
-        ...prev.initial_user,
-        gender,
-      },
-    }));
-    if (errors.initial_user?.gender) {
-      setErrors(prev => ({
-        ...prev,
-        initial_user: {
-          ...prev.initial_user,
-          gender: undefined,
-        },
-      }));
-    }
-  };
-
-  const handlePickImage = () => {
-    if (!documentType) {
-      showToast.error('Please select document type first');
-      return;
-    }
-
-    launchImageLibrary(
-      {
-        mediaType: 'photo',
-        quality: 0.8,
-        selectionLimit: 5,
-      },
-      (response: ImagePickerResponse) => {
-        if (response.didCancel) {
-          return;
-        }
-        if (response.errorMessage) {
-          showToast.error(response.errorMessage);
-          return;
-        }
-        if (response.assets && response.assets.length > 0) {
-          const newFiles = response.assets.map((asset) => ({
-            uri: asset.uri || '',
-            type: asset.type || 'image/jpeg',
-            fileName: asset.fileName || `image_${Date.now()}.jpg`,
-            documentType: documentType,
-          }));
-          setIdentityProofFiles((prev) => [...prev, ...newFiles]);
-          setErrors((prev) => ({ ...prev, identityProof: undefined }));
-        }
-      },
-    );
-  };
-
-  const handlePickDocument = async () => {
-    if (!documentType) {
-      showToast.error('Please select document type first');
-      return;
-    }
-
-    // Document picker functionality removed - react-native-document-picker was uninstalled
-    showToast.error('Document picker is not available. Please use image picker instead.');
-  };
-
-  const removeFile = (index: number) => {
-    setIdentityProofFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handlePickOfficePhoto = () => {
@@ -604,9 +524,7 @@ export default function OnboardCompanyScreen() {
         selectionLimit: 1,
       },
       (response: ImagePickerResponse) => {
-        if (response.didCancel) {
-          return;
-        }
+        if (response.didCancel) return;
         if (response.errorMessage) {
           showToast.error(response.errorMessage);
           return;
@@ -618,45 +536,69 @@ export default function OnboardCompanyScreen() {
             type: asset.type || 'image/jpeg',
             fileName: asset.fileName || `office_photo_${Date.now()}.jpg`,
           });
-          setErrors((prev) => ({ ...prev, officePhoto: undefined }));
+          setErrors(prev => ({ ...prev, officePhoto: undefined }));
         }
       },
     );
   };
 
-  const removeOfficePhoto = () => {
-    setOfficePhoto(null);
+  const removeOfficePhoto = () => setOfficePhoto(null);
+
+  const handlePickIdentityPhotos = () => {
+    if (!documentType) {
+      showToast.error('Please select document type first');
+      return;
+    }
+    launchImageLibrary(
+      {
+        mediaType: 'photo',
+        quality: 0.8,
+        selectionLimit: 5,
+      },
+      (response: ImagePickerResponse) => {
+        if (response.didCancel) return;
+        if (response.errorMessage) {
+          showToast.error(response.errorMessage);
+          return;
+        }
+        if (response.assets && response.assets.length > 0) {
+          const newFiles = response.assets.map((asset) => ({
+            uri: asset.uri || '',
+            type: asset.type || 'image/jpeg',
+            fileName: asset.fileName || `image_${Date.now()}.jpg`,
+            documentType,
+          }));
+          setNewIdentityFiles((prev) => [...prev, ...newFiles]);
+          setErrors((prev) => ({ ...prev, identityProof: undefined }));
+        }
+      },
+    );
   };
 
-  const getFileIcon = (type: string) => {
-    if (type.startsWith('image/')) {
-      return 'image';
-    }
-    if (type.includes('pdf')) {
-      return 'file-pdf-box';
-    }
-    if (type.includes('word') || type.includes('document')) {
-      return 'file-word-box';
-    }
-    return 'file-document';
+  const removeNewIdentityFile = (index: number) => {
+    setNewIdentityFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Log suggestions state changes
-  useEffect(() => {
-    console.log('[Company Address] Suggestions state changed:', {
-      count: companyAddressSuggestions.length,
-      suggestions: companyAddressSuggestions,
-      loading: addressLoading,
-    });
-  }, [companyAddressSuggestions, addressLoading]);
+  const removeExistingDocument = async (fileId: string) => {
+    try {
+      const cid = companyId || initialCompany?.id;
+      if (!cid) return;
+      await uploadApi.deleteCompanyFile(cid, fileId);
+      setExistingDocuments((prev) => prev.filter((d) => d.id !== fileId));
+      showToast.success('Document deleted');
+    } catch (e: any) {
+      showToast.error(e?.message || 'Failed to delete document');
+    }
+  };
 
-  useEffect(() => {
-    console.log('[User Address] Suggestions state changed:', {
-      count: userAddressSuggestions.length,
-      suggestions: userAddressSuggestions,
-      loading: userAddressLoading,
-    });
-  }, [userAddressSuggestions, userAddressLoading]);
+  if (fetching) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={styles.loadingText}>Loading company...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -664,7 +606,7 @@ export default function OnboardCompanyScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color={theme.foreground} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Onboard Company</Text>
+        <Text style={styles.headerTitle}>Edit Company</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -680,7 +622,7 @@ export default function OnboardCompanyScreen() {
             <Input
               label="Company Name *"
               placeholder="Enter company name"
-              value={formData.name}
+              value={formData.name || ''}
               onChangeText={value => handleInputChange('name', value)}
               error={errors.name}
               containerStyle={styles.input}
@@ -690,7 +632,7 @@ export default function OnboardCompanyScreen() {
               placeholder="company@example.com"
               keyboardType="email-address"
               autoCapitalize="none"
-              value={formData.email}
+              value={formData.email || ''}
               onChangeText={value => handleInputChange('email', value)}
               error={errors.email}
               containerStyle={styles.input}
@@ -699,7 +641,7 @@ export default function OnboardCompanyScreen() {
               label="Company Phone"
               placeholder="+91 98765 43210"
               keyboardType="phone-pad"
-              value={formData.phone}
+              value={formData.phone || ''}
               onChangeText={value => handleInputChange('phone', value)}
               error={errors.phone}
               containerStyle={styles.input}
@@ -707,8 +649,10 @@ export default function OnboardCompanyScreen() {
             <View style={styles.input}>
               <Text style={styles.autocompleteLabel}>Company Address</Text>
               <AutocompleteDropdown
+                key={`company-address-${companyAddressSearch || formData.address || ''}`}
                 dataSet={companyAddressSuggestions}
                 loading={addressLoading}
+                initialValue={companyAddressSearch || formData.address || ''}
                 onSelectItem={(item) => {
                   console.log('[Company Address] onSelectItem called with item:', item);
                   const address = item?.title || '';
@@ -726,7 +670,7 @@ export default function OnboardCompanyScreen() {
                 }}
                 textInputProps={{
                   placeholder: 'Search company address',
-                  value: companyAddressSearch || formData.address || '',
+                  defaultValue: companyAddressSearch || formData.address || '',
                   autoCorrect: false,
                   autoCapitalize: 'none',
                   style: {
@@ -745,6 +689,7 @@ export default function OnboardCompanyScreen() {
                 closeOnSubmit={false}
               />
             </View>
+
             <Input
               label="Number of Team Members"
               placeholder="Enter number of team members"
@@ -754,6 +699,7 @@ export default function OnboardCompanyScreen() {
               error={errors.team_members}
               containerStyle={styles.input}
             />
+
             <Input
               label="Years of Experience"
               placeholder="Enter years of experience"
@@ -763,7 +709,7 @@ export default function OnboardCompanyScreen() {
               error={errors.years_of_experience}
               containerStyle={styles.input}
             />
-            
+
             <View style={styles.uploadSection}>
               <Text style={styles.uploadSectionLabel}>Company Office Photo</Text>
               {officePhoto ? (
@@ -788,18 +734,52 @@ export default function OnboardCompanyScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
+              ) : formData.office_photo_url ? (
+                <View style={styles.officePhotoContainer}>
+                  <Image source={{ uri: formData.office_photo_url }} style={styles.officePhotoPreview} />
+                  <View style={styles.officePhotoActions}>
+                    <TouchableOpacity
+                      style={styles.officePhotoButton}
+                      onPress={handlePickOfficePhoto}
+                    >
+                      <Icon name="camera" size={20} color={theme.primary} />
+                      <Text style={styles.officePhotoButtonText}>Change Photo</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               ) : (
-                <TouchableOpacity
-                  style={styles.uploadButton}
-                  onPress={handlePickOfficePhoto}
-                >
+                <TouchableOpacity style={styles.uploadButton} onPress={handlePickOfficePhoto}>
                   <Icon name="camera" size={20} color={theme.primary} />
                   <Text style={styles.uploadButtonText}>Add Office Photo</Text>
                 </TouchableOpacity>
               )}
-              {errors.officePhoto && (
-                <Text style={styles.errorText}>{errors.officePhoto}</Text>
-              )}
+              {errors.officePhoto && <Text style={styles.errorText}>{errors.officePhoto}</Text>}
+            </View>
+
+            <View style={styles.toggleContainer}>
+              <Text style={styles.toggleLabel}>Status</Text>
+              <TouchableOpacity
+                style={[
+                  styles.toggleButton,
+                  formData.is_active ? styles.toggleButtonActive : styles.toggleButtonInactive,
+                ]}
+                onPress={() => handleInputChange('is_active', !formData.is_active)}
+              >
+                <View
+                  style={[
+                    styles.toggleDot,
+                    formData.is_active ? styles.toggleDotActive : styles.toggleDotInactive,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.toggleText,
+                    formData.is_active ? styles.toggleTextActive : styles.toggleTextInactive,
+                  ]}
+                >
+                  {formData.is_active ? 'Active' : 'Inactive'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </CardContent>
         </Card>
@@ -815,9 +795,8 @@ export default function OnboardCompanyScreen() {
             <Input
               label="User Name *"
               placeholder="Enter admin user name"
-              value={formData.initial_user.name}
-              onChangeText={value => handleInputChange('initial_user.name', value)}
-              error={errors.initial_user?.name}
+              value={adminUser.name}
+              onChangeText={(value) => setAdminUser((p) => ({ ...p, name: value }))}
               containerStyle={styles.input}
             />
             <Input
@@ -825,43 +804,52 @@ export default function OnboardCompanyScreen() {
               placeholder="admin@company.com"
               keyboardType="email-address"
               autoCapitalize="none"
-              value={formData.initial_user.email}
-              onChangeText={value => handleInputChange('initial_user.email', value)}
-              error={errors.initial_user?.email}
+              value={adminUser.email}
+              onChangeText={(value) => setAdminUser((p) => ({ ...p, email: value }))}
               containerStyle={styles.input}
             />
             <Input
               label="User Phone"
               placeholder="+91 98765 43210"
               keyboardType="phone-pad"
-              value={formData.initial_user.phone}
-              onChangeText={value => handleInputChange('initial_user.phone', value)}
-              error={errors.initial_user?.phone}
+              value={adminUser.phone || ''}
+              onChangeText={(value) => setAdminUser((p) => ({ ...p, phone: value }))}
               containerStyle={styles.input}
+            />
+            <Input
+              label="User Address"
+              placeholder="Enter user address"
+              value={adminUser.address || ''}
+              onChangeText={(value) => setAdminUser((p) => ({ ...p, address: value }))}
+              multiline
+              numberOfLines={3}
+              containerStyle={{ display: 'none' }}
             />
             <View style={styles.input}>
               <Text style={styles.autocompleteLabel}>User Address</Text>
               <AutocompleteDropdown
+                key={`user-address-${userAddressSearch || adminUser.address || ''}`}
                 dataSet={userAddressSuggestions}
                 loading={userAddressLoading}
+                initialValue={userAddressSearch || adminUser.address || ''}
                 onSelectItem={(item) => {
                   console.log('[User Address] onSelectItem called with item:', item);
                   const address = item?.title || '';
                   console.log('[User Address] Selected address:', address);
                   setUserAddressSearch(address);
-                  handleInputChange('initial_user.address', address);
-                  console.log('[User Address] Updated formData.initial_user.address to:', address);
+                  setAdminUser((p) => ({ ...p, address }));
+                  console.log('[User Address] Updated adminUser.address to:', address);
                 }}
                 onChangeText={(text) => {
                   console.log('[User Address] onChangeText called with text:', text);
                   console.log('[User Address] Current suggestions count:', userAddressSuggestions.length);
                   setUserAddressSearch(text);
-                  handleInputChange('initial_user.address', text);
+                  setAdminUser((p) => ({ ...p, address: text }));
                   fetchUserAddressSuggestions(text);
                 }}
                 textInputProps={{
                   placeholder: 'Search user address',
-                  value: userAddressSearch || formData.initial_user.address || '',
+                  defaultValue: userAddressSearch || adminUser.address || '',
                   autoCorrect: false,
                   autoCapitalize: 'none',
                   style: {
@@ -879,48 +867,25 @@ export default function OnboardCompanyScreen() {
                 closeOnBlur={true}
                 closeOnSubmit={false}
               />
-              {errors.initial_user?.address && (
-                <Text style={styles.errorText}>{errors.initial_user.address}</Text>
-              )}
             </View>
             <Input
               label="User Age"
               placeholder="Enter age"
               keyboardType="numeric"
-              value={formData.initial_user.age?.toString() || ''}
-              onChangeText={value => handleInputChange('initial_user.age', value)}
-              error={errors.initial_user?.age}
+              value={adminUser.age?.toString() || ''}
+              onChangeText={(value) =>
+                setAdminUser((p) => ({
+                  ...p,
+                  age: value.trim().length === 0 ? undefined : parseInt(value, 10),
+                }))
+              }
               containerStyle={styles.input}
             />
             <GenderPicker
               label="User Gender"
-              value={formData.initial_user.gender as Gender | undefined}
-              onValueChange={handleGenderChange}
-              error={errors.initial_user?.gender}
+              value={adminUser.gender as Gender | undefined}
+              onValueChange={(gender) => setAdminUser((p) => ({ ...p, gender }))}
             />
-            <Input
-              label="Password *"
-              placeholder="Enter password (min 8 characters)"
-              value={formData.initial_user.password || ''}
-              onChangeText={value => handleInputChange('initial_user.password', value)}
-              error={errors.initial_user?.password}
-              secureTextEntry={!showPassword}
-              containerStyle={styles.input}
-              autoCapitalize="none"
-              autoCorrect={false}
-              rightIcon={
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Icon
-                    name={showPassword ? 'eye-off' : 'eye'}
-                    size={20}
-                    color={theme.mutedForeground}
-                  />
-                </TouchableOpacity>
-              }
-            />
-            <Text style={styles.helpText}>
-              Password must be at least 8 characters long. Use a strong password with letters, numbers, and special characters.
-            </Text>
           </CardContent>
         </Card>
 
@@ -928,12 +893,12 @@ export default function OnboardCompanyScreen() {
           <CardHeader>
             <View style={styles.cardHeaderContent}>
               <Icon name="card-account-details" size={20} color={theme.primary} />
-              <CardTitle>Broker Identity Proof *</CardTitle>
+              <CardTitle>Broker Identity Proof</CardTitle>
             </View>
           </CardHeader>
           <CardContent>
             <DocumentTypePicker
-              label="Document Type *"
+              label="Document Type"
               value={documentType}
               onValueChange={setDocumentType}
               error={errors.identityProof && !documentType ? errors.identityProof : undefined}
@@ -942,7 +907,7 @@ export default function OnboardCompanyScreen() {
             <View style={styles.uploadButtons}>
               <TouchableOpacity
                 style={styles.uploadButton}
-                onPress={handlePickImage}
+                onPress={handlePickIdentityPhotos}
                 disabled={!documentType}
               >
                 <Icon
@@ -959,41 +924,45 @@ export default function OnboardCompanyScreen() {
                   Add Photos
                 </Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.uploadButton}
-                onPress={handlePickDocument}
-                disabled={!documentType}
-              >
-                <Icon
-                  name="file-document"
-                  size={20}
-                  color={documentType ? theme.primary : theme.mutedForeground}
-                />
-                <Text
-                  style={[
-                    styles.uploadButtonText,
-                    !documentType && styles.uploadButtonTextDisabled,
-                  ]}
-                >
-                  Add PDF/DOC
-                </Text>
-              </TouchableOpacity>
             </View>
 
-            {identityProofFiles.length > 0 && (
+            {(existingDocuments.length > 0 || newIdentityFiles.length > 0) && (
               <View style={styles.filesList}>
                 <Text style={styles.filesListTitle}>
-                  Uploaded Documents ({identityProofFiles.length})
+                  Documents ({existingDocuments.length + newIdentityFiles.length})
                 </Text>
-                {identityProofFiles.map((file, index) => (
-                  <View key={index} style={styles.fileItem}>
+
+                {existingDocuments.map((doc) => (
+                  <View key={doc.id} style={styles.fileItem}>
                     <View style={styles.fileInfo}>
-                      <Icon
-                        name={getFileIcon(file.type)}
-                        size={24}
-                        color={theme.primary}
+                      <Icon name="file-document" size={24} color={theme.primary} />
+                      <View style={styles.fileDetails}>
+                        <Text style={styles.fileName} numberOfLines={1}>
+                          {doc.document_type || 'Document'}
+                        </Text>
+                        <Text style={styles.fileType}>{doc.mime_type}</Text>
+                      </View>
+                    </View>
+                    {(doc.thumbnail_url || doc.url) && (
+                      <Image
+                        source={{ uri: (doc.thumbnail_url || doc.url).trim() }}
+                        style={styles.fileThumbnail}
+                        resizeMode="cover"
                       />
+                    )}
+                    <TouchableOpacity
+                      onPress={() => removeExistingDocument(doc.id)}
+                      style={styles.removeButton}
+                    >
+                      <Icon name="close-circle" size={24} color={theme.destructive} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                {newIdentityFiles.map((file, index) => (
+                  <View key={`${file.uri}_${index}`} style={styles.fileItem}>
+                    <View style={styles.fileInfo}>
+                      <Icon name="image" size={24} color={theme.primary} />
                       <View style={styles.fileDetails}>
                         <Text style={styles.fileName} numberOfLines={1}>
                           {file.fileName}
@@ -1001,11 +970,11 @@ export default function OnboardCompanyScreen() {
                         <Text style={styles.fileType}>{file.documentType}</Text>
                       </View>
                     </View>
-                    {file.uri.startsWith('file://') && file.type.startsWith('image/') && (
+                    {file.uri && (
                       <Image source={{ uri: file.uri }} style={styles.fileThumbnail} />
                     )}
                     <TouchableOpacity
-                      onPress={() => removeFile(index)}
+                      onPress={() => removeNewIdentityFile(index)}
                       style={styles.removeButton}
                     >
                       <Icon name="close-circle" size={24} color={theme.destructive} />
@@ -1014,26 +983,11 @@ export default function OnboardCompanyScreen() {
                 ))}
               </View>
             )}
-
-            {errors.identityProof && identityProofFiles.length === 0 && (
-              <Text style={styles.errorText}>{errors.identityProof}</Text>
-            )}
-
-            <Text style={styles.helpText}>
-              Upload photos or documents (PDF, DOC, DOCX) as identity proof. You can upload
-              multiple files.
-            </Text>
           </CardContent>
         </Card>
 
         <Button
-          title={
-            loading
-              ? uploadingFiles
-                ? 'Uploading Documents...'
-                : 'Creating...'
-              : 'Create Company'
-          }
+          title={loading ? 'Updating...' : 'Update Company'}
           onPress={handleSubmit}
           loading={loading}
           disabled={loading}
@@ -1049,6 +1003,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.background,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: theme.mutedForeground,
   },
   header: {
     flexDirection: 'row',
@@ -1086,13 +1051,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 32,
   },
-  uploadButtons: {
-    flexDirection: 'row',
-    gap: 12,
+  uploadSection: {
     marginBottom: 16,
   },
+  uploadSectionLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.foreground,
+    marginBottom: 8,
+  },
   uploadButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1110,6 +1078,11 @@ const styles = StyleSheet.create({
   },
   uploadButtonTextDisabled: {
     color: theme.mutedForeground,
+  },
+  uploadButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
   },
   filesList: {
     marginTop: 8,
@@ -1158,26 +1131,6 @@ const styles = StyleSheet.create({
   },
   removeButton: {
     padding: 4,
-  },
-  errorText: {
-    fontSize: 12,
-    color: theme.destructive,
-    marginTop: 4,
-  },
-  helpText: {
-    fontSize: 12,
-    color: theme.mutedForeground,
-    marginTop: 8,
-    lineHeight: 16,
-  },
-  uploadSection: {
-    marginBottom: 16,
-  },
-  uploadSectionLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: theme.foreground,
-    marginBottom: 8,
   },
   officePhotoContainer: {
     marginTop: 8,
@@ -1228,6 +1181,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: theme.foreground,
+  },
+  errorText: {
+    fontSize: 12,
+    color: theme.destructive,
+    marginTop: 4,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingVertical: 8,
+  },
+  toggleLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.foreground,
+  },
+  toggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    gap: 8,
+  },
+  toggleButtonActive: {
+    backgroundColor: `${theme.success}15`,
+    borderColor: theme.success,
+  },
+  toggleButtonInactive: {
+    backgroundColor: `${theme.mutedForeground}15`,
+    borderColor: theme.mutedForeground,
+  },
+  toggleDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  toggleDotActive: {
+    backgroundColor: theme.success,
+  },
+  toggleDotInactive: {
+    backgroundColor: theme.mutedForeground,
+  },
+  toggleText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  toggleTextActive: {
+    color: theme.success,
+  },
+  toggleTextInactive: {
+    color: theme.mutedForeground,
   },
 });
 

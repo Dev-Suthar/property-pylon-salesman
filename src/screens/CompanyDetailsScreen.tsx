@@ -219,6 +219,21 @@ Please share these credentials securely with the company.`;
           </>
         )}
 
+        {isExistingCompany && (
+          <Button
+            title="Edit Company"
+            onPress={() => {
+              (navigation as any).navigate('EditCompany', {
+                companyId: companyData.company.id,
+                company: companyData.company,
+              });
+            }}
+            fullWidth
+            style={styles.editButton}
+            leftIcon={<Icon name="pencil" size={20} color={theme.primaryForeground} />}
+          />
+        )}
+
         <Button
           title={isExistingCompany ? 'Back to History' : 'Back to Dashboard'}
           onPress={() => navigation.goBack()}
@@ -329,6 +344,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   shareButton: {
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  editButton: {
     marginTop: 8,
     marginBottom: 12,
   },

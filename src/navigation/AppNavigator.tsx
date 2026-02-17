@@ -8,6 +8,7 @@ import { theme } from '../theme/colors';
 import LoginScreen from '../screens/LoginScreen';
 import OnboardCompanyScreen from '../screens/OnboardCompanyScreen';
 import CompanyDetailsScreen from '../screens/CompanyDetailsScreen';
+import EditCompanyScreen from '../screens/EditCompanyScreen';
 
 // Navigation
 import TabNavigator from './TabNavigator';
@@ -75,6 +76,11 @@ export default function AppNavigator() {
               name="CompanyDetails"
               component={CompanyDetailsScreen}
               options={{ presentation: 'card' }}
+            />
+            <Stack.Screen
+              name="EditCompany"
+              component={EditCompanyScreen}
+              options={{ presentation: 'modal' }}
             />
           </>
         )}

@@ -9,6 +9,8 @@ import Button from '../components/ui/Button';
 import { CreateCompanyResponse } from '../services/api/companies';
 import { showToast } from '../utils/toast';
 
+import { fonts } from "../theme/typography";
+import PropertyMap from '../components/design/PropertyMap';
 export default function CompanyDetailsScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -120,6 +122,14 @@ Please share these credentials securely with the company.`;
                 <Text style={styles.detailValue}>{companyData.company.address}</Text>
               </View>
             )}
+            {companyData.company.address ? (
+              <PropertyMap
+                address={companyData.company.address}
+                title={companyData.company.name}
+                height={170}
+                style={styles.map}
+              />
+            ) : null}
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Company ID:</Text>
               <View style={styles.copyableRow}>
@@ -247,6 +257,10 @@ Please share these credentials securely with the company.`;
 }
 
 const styles = StyleSheet.create({
+  map: {
+    marginTop: 4,
+    marginBottom: 16,
+  },
   container: {
     flex: 1,
     backgroundColor: theme.background,
@@ -261,6 +275,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.border,
   },
   headerTitle: {
+    fontFamily: fonts.sans,
     fontSize: 18,
     fontWeight: '600',
     color: theme.foreground,
@@ -278,6 +293,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
   successTitle: {
+    fontFamily: fonts.display,
     fontSize: 22,
     fontWeight: '700',
     color: theme.foreground,
@@ -285,6 +301,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   successSubtitle: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     color: theme.mutedForeground,
     textAlign: 'center',
@@ -306,17 +323,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   detailLabel: {
+    fontFamily: fonts.sans,
     fontSize: 12,
     fontWeight: '500',
     color: theme.mutedForeground,
     marginBottom: 4,
   },
   detailValue: {
+    fontFamily: fonts.sans,
     fontSize: 16,
     fontWeight: '600',
     color: theme.foreground,
   },
   detailValueSmall: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     color: theme.foreground,
     flex: 1,
@@ -339,6 +359,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
+    fontFamily: fonts.sans,
     fontSize: 14,
     color: theme.foreground,
     lineHeight: 20,
@@ -355,6 +376,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   errorText: {
+    fontFamily: fonts.sans,
     fontSize: 16,
     color: theme.destructive,
     textAlign: 'center',
@@ -366,7 +388,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 8,
     alignSelf: 'flex-start',
   },
   statusBadgeActive: {
@@ -391,6 +413,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.mutedForeground,
   },
   statusText: {
+    fontFamily: fonts.sans,
     fontSize: 12,
     fontWeight: '600',
   },

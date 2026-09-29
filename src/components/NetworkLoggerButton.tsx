@@ -10,6 +10,7 @@ import { PanGestureHandler, TapGestureHandler, GestureHandlerRootView, State } f
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { theme } from '../theme/colors';
 
+import { fonts } from "../theme/typography";
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BUTTON_SIZE = 56;
 const BUTTON_MARGIN = 20;
@@ -292,6 +293,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.card,
   },
   modalTitle: {
+    fontFamily: fonts.sans,
     fontSize: 18,
     fontWeight: '600',
     color: theme.foreground,

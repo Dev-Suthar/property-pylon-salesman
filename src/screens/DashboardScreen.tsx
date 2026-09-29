@@ -1,22 +1,36 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { theme } from "../theme/colors";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/Card";
+import Animated, { FadeInDown } from "react-native-reanimated";
+import { ArrowRight, Building2, KeyRound, LogOut, Share2 } from "lucide-react-native";
 import Button from "../components/ui/Button";
+import { theme } from "../theme/colors";
+import { typography } from "../theme/typography";
+import { radius } from "../theme/layout";
+import { Card } from "../components/ui/Card";
 import { authService, User } from "../services/api/auth";
+import ScreenBackground from "../components/design/ScreenBackground";
+import Avatar from "../components/design/Avatar";
+import Eyebrow from "../components/design/Eyebrow";
+import IconTile from "../components/design/IconTile";
+
+const STEPS = [
+  {
+    icon: Building2,
+    title: "Add company & admin",
+    body: "Fill in the broker company and its first admin user.",
+  },
+  {
+    icon: KeyRound,
+    title: "Generate credentials",
+    body: "We create a secure login for the company admin.",
+  },
+  {
+    icon: Share2,
+    title: "Share & go live",
+    body: "Send the credentials — the team can sign in right away.",
+  },
+];
 
 export default function DashboardScreen() {
   const navigation = useNavigation();
@@ -37,142 +51,161 @@ export default function DashboardScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScreenBackground>
       <View style={styles.header}>
-        <View>
+        <Avatar name={user?.name || "Salesman"} size={44} />
+        <View style={{ flex: 1 }}>
           <Text style={styles.welcomeText}>Welcome back,</Text>
-          <Text style={styles.userName}>{user?.name || "Salesman"}</Text>
+          <Text style={styles.userName} numberOfLines={1}>
+            {user?.name || "Salesman"}
+          </Text>
         </View>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-          <Icon name="logout" size={20} color={theme.destructive} />
-        </TouchableOpacity>
+        <Pressable
+          onPress={handleLogout}
+          style={({ pressed }) => [styles.logoutButton, pressed && { opacity: 0.7 }]}
+          accessibilityLabel="Log out"
+          hitSlop={6}
+        >
+          <LogOut size={18} color={theme.rose300} />
+        </Pressable>
       </View>
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <Card style={styles.card}>
-          <CardHeader>
-            <View style={styles.cardHeaderContent}>
-              <CardTitle>Onboard New Company</CardTitle>
-            </View>
-          </CardHeader>
-          <CardContent>
-            <Text style={styles.cardDescription}>
-              Create a new broker company account and generate initial admin
-              credentials.
-            </Text>
-            <Button
-              title="Onboard Company"
-              onPress={() => (navigation as any).navigate("OnboardCompany")}
-              fullWidth
-              style={styles.actionButton}
-              leftIcon={
-                <Icon name="plus" size={20} color={theme.primaryForeground} />
-              }
-            />
-          </CardContent>
-        </Card>
+        <Animated.View entering={FadeInDown.duration(600)} style={styles.hero}>
+          <Text style={styles.heroEyebrow}>New broker?</Text>
+          <Text style={styles.heroTitle}>onboard a company.</Text>
+          <Text style={styles.heroBody}>
+            Create a broker account and generate admin credentials in under a minute.
+          </Text>
+          <Button
+            title="Start onboarding"
+            onPress={() => (navigation as any).navigate("OnboardCompany")}
+            rightIcon={<ArrowRight size={16} color="#0D0D0D" strokeWidth={2.4} />}
+            style={styles.heroCta}
+          />
+        </Animated.View>
 
-        <Card style={styles.infoCard}>
-          <CardHeader>
-            <View style={styles.cardHeaderContent}>
-              <Icon name="information" size={24} color={theme.primary} />
-              <CardTitle>Instructions</CardTitle>
-            </View>
-          </CardHeader>
-          <CardContent>
-            <View style={styles.instructionItem}>
-              <Icon name="check-circle" size={16} color={theme.success} />
-              <Text style={styles.instructionText}>
-                Fill in company and initial admin user details
-              </Text>
-            </View>
-            <View style={styles.instructionItem}>
-              <Icon name="check-circle" size={16} color={theme.success} />
-              <Text style={styles.instructionText}>
-                Share the generated credentials with the company
-              </Text>
-            </View>
-            <View style={styles.instructionItem}>
-              <Icon name="check-circle" size={16} color={theme.success} />
-              <Text style={styles.instructionText}>
-                Company can login using the provided credentials
-              </Text>
-            </View>
-          </CardContent>
-        </Card>
+        <Animated.View entering={FadeInDown.delay(120).duration(600)}>
+          <Eyebrow label="How it works" style={styles.eyebrow} />
+          <Card style={styles.stepsCard}>
+            {STEPS.map((step, idx) => {
+              const Icon = step.icon;
+              const last = idx === STEPS.length - 1;
+              return (
+                <View key={step.title} style={styles.stepRow}>
+                  <View style={styles.stepRail}>
+                    <IconTile tone="glass" size={40}>
+                      <Icon size={18} color={theme.foreground} />
+                    </IconTile>
+                    {!last && <View style={styles.stepLine} />}
+                  </View>
+                  <View style={[styles.stepText, !last && { paddingBottom: 22 }]}>
+                    <Text style={styles.stepIndex}>Step {idx + 1}</Text>
+                    <Text style={typography.title}>{step.title}</Text>
+                    <Text style={[typography.bodySm, { marginTop: 2 }]}>{step.body}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </Card>
+        </Animated.View>
       </ScrollView>
-    </View>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.background,
-  },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
-    backgroundColor: theme.card,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
   welcomeText: {
-    fontSize: 14,
-    color: theme.mutedForeground,
-    marginBottom: 4,
+    ...typography.bodySm,
   },
   userName: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: theme.foreground,
+    ...typography.h2,
+  },
+  logoutButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.destructiveTint,
+    borderWidth: 1,
+    borderColor: "rgba(244,63,94,0.2)",
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 32,
   },
-  card: {
-    marginBottom: 16,
+  hero: {
+    paddingTop: 12,
+    paddingBottom: 28,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.divider,
   },
-  infoCard: {
-    marginBottom: 16,
+  heroEyebrow: {
+    ...typography.overline,
   },
-  cardHeaderContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+  heroTitle: {
+    ...typography.hero,
+    fontSize: 40,
+    lineHeight: 46,
+    marginTop: 10,
   },
-  cardDescription: {
+  heroBody: {
+    ...typography.bodyMuted,
+    marginTop: 10,
+  },
+  heroCta: {
+    alignSelf: "flex-start",
+    marginTop: 22,
+  },
+  heroCtaText: {
+    ...typography.label,
     fontSize: 14,
-    color: theme.mutedForeground,
-    marginBottom: 16,
-    lineHeight: 20,
+    color: "#0F172A",
+    fontWeight: "700",
   },
-  actionButton: {
-    marginTop: 8,
-  },
-  instructionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+  eyebrow: {
+    marginTop: 28,
     marginBottom: 12,
   },
-  instructionText: {
-    flex: 1,
-    fontSize: 14,
-    color: theme.foreground,
-    lineHeight: 20,
+  stepsCard: {
+    padding: 18,
   },
-  logoutButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: `${theme.destructive}20`,
+  stepRow: {
+    flexDirection: "row",
+    gap: 14,
+  },
+  stepRail: {
+    alignItems: "center",
+  },
+  stepLine: {
+    flex: 1,
+    width: 1,
+    marginVertical: 6,
+    backgroundColor: theme.hairline,
+  },
+  stepText: {
+    flex: 1,
+    paddingTop: 2,
+  },
+  stepIndex: {
+    ...typography.caption,
+    color: theme.blue300,
+    marginBottom: 2,
   },
 });

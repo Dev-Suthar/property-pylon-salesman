@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,28 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, User } from 'lucide-react-native';
 import { theme } from '../theme/colors';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import { authService } from '../services/api/auth';
 import { getUsernameError, getPasswordError } from '../utils/validation';
 import { showToast } from '../utils/toast';
 
+import { typography } from "../theme/typography";
+import ScreenBackground from "../components/design/ScreenBackground";
+import Eyebrow from "../components/design/Eyebrow";
+import BrandLogo from "../components/design/BrandLogo";
 export default function LoginScreen() {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  // Keep the focused field above the keyboard (the form sits at the bottom).
+  const revealForm = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 250);
+  const [contentHeight, setContentHeight] = useState(0);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -95,64 +104,82 @@ export default function LoginScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <ScreenBackground>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.content}>
-          <View style={styles.logoSection}>
-            <View style={styles.logoContainer}>
-              <Icon name="office-building" size={32} color={theme.primaryForeground} />
-            </View>
-            <Text style={styles.brandTitle}>Pylon Salesman</Text>
-            <Text style={styles.brandSubtitle}>Company Onboarding System</Text>
-          </View>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+          // Feels like a fixed native screen: only scrolls if the content
+          // genuinely overflows (small phones / keyboard open), never bounces.
+          scrollEnabled={contentHeight > viewportHeight + 1}
+          bounces={false}
+          overScrollMode="never"
+          onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
+          onContentSizeChange={(_, h) => setContentHeight(h)}
+        >
+          <View style={styles.content}>
+            <View>
+              <Animated.View entering={FadeInDown.duration(600)} style={styles.brandRow}>
+                <BrandLogo size={34} />
+              </Animated.View>
 
-          <Card style={styles.loginCard}>
-            <CardHeader>
-              <CardTitle>
-                <Text style={styles.cardTitleText}>Welcome Back</Text>
-              </CardTitle>
-              <Text style={styles.cardSubtitle}>
-                Sign in to your account to continue
-              </Text>
-            </CardHeader>
-            <CardContent>
+              <Animated.View entering={FadeInDown.delay(80).duration(700)}>
+                <Eyebrow label="Pylon Salesman" style={styles.eyebrow} />
+                <Text style={styles.heroLine}>onboard</Text>
+                <Text style={styles.heroLine}>brokers.</Text>
+                <Text style={[styles.heroLine, styles.heroLineMuted]}>in minutes.</Text>
+                <Text style={styles.heroSubtitle}>
+                  Sign in to onboard companies and track your pipeline.
+                </Text>
+              </Animated.View>
+            </View>
+
+            <Animated.View entering={FadeInDown.delay(200).duration(700)} style={styles.form}>
               <Input
-                label="Username or Email"
-                placeholder="Enter your email or username"
+                label="Username or email"
+                onFocus={revealForm}
+                placeholder="you@company.com"
                 value={formData.username}
                 onChangeText={value => handleInputChange('username', value)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                leftIcon={
-                  <Icon name="account" size={16} color={theme.mutedForeground} />
-                }
+                textContentType="username"
+                leftIcon={<User size={18} color={theme.textTertiary} />}
                 error={errors.username}
                 containerStyle={styles.inputContainer}
               />
 
               <Input
                 label="Password"
-                placeholder="Enter your password"
+                onFocus={revealForm}
+                placeholder="••••••••"
                 value={formData.password}
                 onChangeText={value => handleInputChange('password', value)}
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoCorrect={false}
-                leftIcon={<Icon name="lock" size={16} color={theme.mutedForeground} />}
+                textContentType="password"
+                returnKeyType="go"
+                onSubmitEditing={handleSubmit}
+                leftIcon={<Lock size={18} color={theme.textTertiary} />}
                 rightIcon={
-                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                    <Icon
-                      name={showPassword ? 'eye-off' : 'eye'}
-                      size={16}
-                      color={theme.mutedForeground}
-                    />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    hitSlop={10}
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={18} color={theme.textSecondary} />
+                    ) : (
+                      <Eye size={18} color={theme.textSecondary} />
+                    )}
                   </TouchableOpacity>
                 }
                 error={errors.password}
@@ -161,100 +188,92 @@ export default function LoginScreen() {
 
               {errors.general && (
                 <View style={styles.errorContainer}>
-                  <Icon name="alert-circle" size={16} color={theme.destructive} />
+                  <AlertCircle size={15} color={theme.destructive} />
                   <Text style={styles.errorText}>{errors.general}</Text>
                 </View>
               )}
 
               <Button
-                title={loading ? 'Signing In...' : 'Sign In'}
+                title={loading ? 'Signing in' : 'Sign in'}
                 onPress={handleSubmit}
                 disabled={loading}
+                loading={loading}
                 fullWidth
+                size="lg"
+                rightIcon={!loading ? <ArrowRight size={18} color="#0D0D0D" strokeWidth={2.4} /> : undefined}
                 style={styles.submitButton}
               />
-            </CardContent>
-          </Card>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+              <Text style={styles.footer}>
+                © {new Date().getFullYear()} Dream to Buy Properties
+              </Text>
+            </Animated.View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: 16,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 20,
   },
   content: {
+    flex: 1,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 460,
     alignSelf: 'center',
+    justifyContent: 'space-between',
   },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: 32,
+  brandRow: {
+    marginBottom: 44,
   },
-  logoContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
-    backgroundColor: theme.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
+  eyebrow: {
+    marginBottom: 18,
   },
-  brandTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: theme.foreground,
-    marginBottom: 8,
+  heroLine: {
+    ...typography.hero,
+    fontSize: 44,
+    lineHeight: 50,
+    letterSpacing: -1,
   },
-  brandSubtitle: {
-    fontSize: 14,
-    color: theme.mutedForeground,
+  heroLineMuted: {
+    color: theme.textTertiary,
   },
-  loginCard: {
-    marginBottom: 24,
+  heroSubtitle: {
+    ...typography.bodyMuted,
+    marginTop: 16,
   },
-  cardTitleText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: theme.foreground,
-    textAlign: 'center',
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: theme.mutedForeground,
-    textAlign: 'center',
-    marginTop: 8,
+  form: {
+    marginTop: 32,
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 22,
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${theme.destructive}20`,
-    borderWidth: 1,
-    borderColor: `${theme.destructive}40`,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
     gap: 8,
+    marginBottom: 18,
   },
   errorText: {
-    fontSize: 14,
+    ...typography.bodySm,
     color: theme.destructive,
     flex: 1,
   },
   submitButton: {
     marginTop: 8,
   },
+  footer: {
+    ...typography.caption,
+    textAlign: 'center',
+    marginTop: 20,
+  },
 });
-

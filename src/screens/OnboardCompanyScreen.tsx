@@ -32,9 +32,10 @@ import {
   getYearsOfExperienceError,
 } from '../utils/validation';
 import { showToast } from '../utils/toast';
+import { CONFIG } from '../config/config';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyBEx5pLE46IyorCWTQ9CizWEpu4e8hP5NQ';
 
+import { fonts } from "../theme/typography";
 export default function OnboardCompanyScreen() {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
@@ -129,9 +130,9 @@ export default function OnboardCompanyScreen() {
     addressSearchTimeout.current = setTimeout(async () => {
       const apiUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
         query,
-      )}&key=${GOOGLE_MAPS_API_KEY}&types=geocode&components=country:in`;
+      )}&key=${CONFIG.GOOGLE_MAPS_API_KEY}&types=geocode&components=country:in`;
       
-      console.log('[Company Address] Making API request:', apiUrl.replace(GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
+      console.log('[Company Address] Making API request:', apiUrl.replace(CONFIG.GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
       
       try {
         setAddressLoading(true);
@@ -186,9 +187,9 @@ export default function OnboardCompanyScreen() {
     userAddressSearchTimeout.current = setTimeout(async () => {
       const apiUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
         query,
-      )}&key=${GOOGLE_MAPS_API_KEY}&types=geocode&components=country:in`;
+      )}&key=${CONFIG.GOOGLE_MAPS_API_KEY}&types=geocode&components=country:in`;
       
-      console.log('[User Address] Making API request:', apiUrl.replace(GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
+      console.log('[User Address] Making API request:', apiUrl.replace(CONFIG.GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
       
       try {
         setUserAddressLoading(true);
@@ -1060,6 +1061,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.border,
   },
   headerTitle: {
+    fontFamily: fonts.sans,
     fontSize: 18,
     fontWeight: '600',
     color: theme.foreground,
@@ -1104,6 +1106,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   uploadButtonText: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.primary,
@@ -1115,6 +1118,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   filesListTitle: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '600',
     color: theme.foreground,
@@ -1141,12 +1145,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fileName: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.foreground,
     marginBottom: 4,
   },
   fileType: {
+    fontFamily: fonts.sans,
     fontSize: 12,
     color: theme.mutedForeground,
   },
@@ -1160,11 +1166,13 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   errorText: {
+    fontFamily: fonts.sans,
     fontSize: 12,
     color: theme.destructive,
     marginTop: 4,
   },
   helpText: {
+    fontFamily: fonts.sans,
     fontSize: 12,
     color: theme.mutedForeground,
     marginTop: 8,
@@ -1174,6 +1182,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   uploadSectionLabel: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.foreground,
@@ -1206,6 +1215,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   officePhotoButtonText: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.primary,
@@ -1225,6 +1235,7 @@ const styles = StyleSheet.create({
   },
   autocompleteLabel: {
     marginBottom: 6,
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.foreground,

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { theme } from '../../theme/colors';
 
+import { fonts } from "../../theme/typography";
 export type Gender = 'Male' | 'Female' | 'Other' | 'Prefer not to say';
 
 interface GenderPickerProps {
@@ -120,6 +121,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.foreground,
@@ -149,14 +151,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   selectedText: {
+    fontFamily: fonts.sans,
     fontSize: 16,
     color: theme.foreground,
   },
   placeholder: {
+    fontFamily: fonts.sans,
     fontSize: 16,
     color: theme.mutedForeground,
   },
   errorText: {
+    fontFamily: fonts.sans,
     fontSize: 12,
     color: theme.destructive,
     marginTop: 4,
@@ -168,8 +173,8 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: theme.card,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
     maxHeight: '70%',
   },
   modalHeader: {
@@ -181,6 +186,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.border,
   },
   modalTitle: {
+    fontFamily: fonts.sans,
     fontSize: 18,
     fontWeight: '600',
     color: theme.foreground,
@@ -201,6 +207,7 @@ const styles = StyleSheet.create({
   },
   optionText: {
     flex: 1,
+    fontFamily: fonts.sans,
     fontSize: 16,
     color: theme.foreground,
   },

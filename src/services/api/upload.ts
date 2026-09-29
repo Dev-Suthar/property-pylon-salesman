@@ -34,13 +34,13 @@ class UploadServiceImpl {
   async uploadSingle(
     file: UploadFile,
     type: 'image' | 'video' | 'document',
-    companyId?: string,
+    companyId: string,
     extraFields?: UploadExtraFields,
   ): Promise<UploadResponse | null> {
     try {
-      const endpoint = companyId 
-        ? `/companies/${companyId}/upload`
-        : `/admin/upload`; // For salesman, we might need a special endpoint
+      // Photos/videos are compressed + watermarked server-side; `document`
+      // (identity proofs) is stored untouched.
+      const endpoint = `/companies/${companyId}/upload`;
 
       const formData = new FormData();
       
@@ -95,7 +95,7 @@ class UploadServiceImpl {
   async uploadBulk(
     files: UploadFile[],
     type: 'image' | 'video' | 'document',
-    companyId?: string,
+    companyId: string,
     extraFields?: UploadExtraFields,
   ): Promise<BulkUploadResponse | null> {
     try {
@@ -154,38 +154,6 @@ class UploadServiceImpl {
       return true;
     } catch (error) {
       console.error('Delete company file error:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Update metadata for an already uploaded company file (e.g. document_type)
-   */
-  async updateCompanyFile(
-    companyId: string,
-    fileId: string,
-    fields: UploadExtraFields,
-  ): Promise<any | null> {
-    try {
-      const token = await this.getAuthToken();
-      if (!token) throw new Error('Authentication required');
-
-      const response = await fetch(`${API_BASE_URL}/companies/${companyId}/upload/${fileId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(fields),
-      });
-
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Update file failed');
-      }
-      return data || null;
-    } catch (error) {
-      console.error('Update company file error:', error);
       throw error;
     }
   }

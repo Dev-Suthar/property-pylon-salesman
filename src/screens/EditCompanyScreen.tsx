@@ -19,12 +19,13 @@ import Button from '../components/ui/Button';
 import { companiesApi, Company, UpdateCompanyRequest } from '../services/api/companies';
 import { getNameError, getEmailError, getPhoneError } from '../utils/validation';
 import { showToast } from '../utils/toast';
+import { CONFIG } from '../config/config';
 import { uploadApi, UploadFile } from '../services/api/upload';
 import GenderPicker, { Gender } from '../components/ui/GenderPicker';
 import DocumentTypePicker, { DocumentType } from '../components/ui/DocumentTypePicker';
 
-const GOOGLE_MAPS_API_KEY = 'AIzaSyBEx5pLE46IyorCWTQ9CizWEpu4e8hP5NQ';
 
+import { fonts } from "../theme/typography";
 export default function EditCompanyScreen() {
   const navigation = useNavigation();
   const route = useRoute();
@@ -261,9 +262,9 @@ export default function EditCompanyScreen() {
     addressSearchTimeout.current = setTimeout(async () => {
       const apiUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
         query,
-      )}&key=${GOOGLE_MAPS_API_KEY}&types=geocode&components=country:in`;
+      )}&key=${CONFIG.GOOGLE_MAPS_API_KEY}&types=geocode&components=country:in`;
       
-      console.log('[Company Address] Making API request:', apiUrl.replace(GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
+      console.log('[Company Address] Making API request:', apiUrl.replace(CONFIG.GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
       
       try {
         setAddressLoading(true);
@@ -318,9 +319,9 @@ export default function EditCompanyScreen() {
     userAddressSearchTimeout.current = setTimeout(async () => {
       const apiUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
         query,
-      )}&key=${GOOGLE_MAPS_API_KEY}&types=geocode&components=country:in`;
+      )}&key=${CONFIG.GOOGLE_MAPS_API_KEY}&types=geocode&components=country:in`;
       
-      console.log('[User Address] Making API request:', apiUrl.replace(GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
+      console.log('[User Address] Making API request:', apiUrl.replace(CONFIG.GOOGLE_MAPS_API_KEY, 'API_KEY_HIDDEN'));
       
       try {
         setUserAddressLoading(true);
@@ -1012,6 +1013,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
+    fontFamily: fonts.sans,
     fontSize: 14,
     color: theme.mutedForeground,
   },
@@ -1025,6 +1027,7 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.border,
   },
   headerTitle: {
+    fontFamily: fonts.sans,
     fontSize: 18,
     fontWeight: '600',
     color: theme.foreground,
@@ -1055,6 +1058,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   uploadSectionLabel: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.foreground,
@@ -1072,6 +1076,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   uploadButtonText: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.primary,
@@ -1088,6 +1093,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   filesListTitle: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '600',
     color: theme.foreground,
@@ -1114,12 +1120,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fileName: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.foreground,
     marginBottom: 4,
   },
   fileType: {
+    fontFamily: fonts.sans,
     fontSize: 12,
     color: theme.mutedForeground,
   },
@@ -1159,6 +1167,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   officePhotoButtonText: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.primary,
@@ -1178,11 +1187,13 @@ const styles = StyleSheet.create({
   },
   autocompleteLabel: {
     marginBottom: 6,
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.foreground,
   },
   errorText: {
+    fontFamily: fonts.sans,
     fontSize: 12,
     color: theme.destructive,
     marginTop: 4,
@@ -1195,6 +1206,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   toggleLabel: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '500',
     color: theme.foreground,
@@ -1204,7 +1216,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 8,
     borderWidth: 1.5,
     gap: 8,
   },
@@ -1228,6 +1240,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.mutedForeground,
   },
   toggleText: {
+    fontFamily: fonts.sans,
     fontSize: 13,
     fontWeight: '600',
   },

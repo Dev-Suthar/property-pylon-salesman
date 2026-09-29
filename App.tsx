@@ -1,4 +1,5 @@
 import React from "react";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Toast from "react-native-toast-message";
@@ -11,6 +12,7 @@ function App(): React.JSX.Element {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+            <BottomSheetModalProvider>
         <AutocompleteDropdownContextProvider>
           <CustomSafeAreaView edges={["top", "bottom"]}>
             <AppNavigator />
@@ -18,7 +20,8 @@ function App(): React.JSX.Element {
             <Toast />
           </CustomSafeAreaView>
         </AutocompleteDropdownContextProvider>
-      </SafeAreaProvider>
+      </BottomSheetModalProvider>
+        </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

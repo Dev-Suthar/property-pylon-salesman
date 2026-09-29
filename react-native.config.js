@@ -1,7 +1,9 @@
 const path = require('path');
 
 module.exports = {
-  assets: ['./node_modules/react-native-vector-icons/Fonts/'],
+  // Vector-icon fonts are bundled by the RNVectorIcons pod; linking them here too
+  // makes Xcode fail with "Multiple commands produce ...ttf".
+  assets: ['./assets/fonts/'],
   dependencies: {
     'react-native-image-picker': {
       platforms: {

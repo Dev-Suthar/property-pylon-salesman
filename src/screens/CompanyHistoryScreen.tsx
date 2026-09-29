@@ -17,6 +17,7 @@ import Button from '../components/ui/Button';
 import { companiesApi, Company, GetCompaniesParams } from '../services/api/companies';
 import { showToast } from '../utils/toast';
 
+import { fonts } from "../theme/typography";
 type FilterStatus = 'all' | 'active' | 'inactive';
 
 export default function CompanyHistoryScreen() {
@@ -449,6 +450,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 12,
+    fontFamily: fonts.sans,
     fontSize: 14,
     color: theme.mutedForeground,
   },
@@ -466,6 +468,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   headerTitle: {
+    fontFamily: fonts.display,
     fontSize: 32,
     fontWeight: '700',
     color: theme.foreground,
@@ -473,6 +476,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   headerSubtitle: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     color: theme.mutedForeground,
     fontWeight: '400',
@@ -500,7 +504,7 @@ const styles = StyleSheet.create({
   filterButton: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: 8,
     backgroundColor: theme.muted,
     justifyContent: 'center',
     alignItems: 'center',
@@ -515,7 +519,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     padding: 16,
     backgroundColor: theme.card,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: theme.border,
     shadowColor: '#000',
@@ -534,6 +538,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   filterLabel: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     fontWeight: '600',
     color: theme.foreground,
@@ -548,7 +553,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 8,
     backgroundColor: theme.muted,
     borderWidth: 1.5,
     borderColor: theme.border,
@@ -562,6 +567,7 @@ const styles = StyleSheet.create({
     marginRight: -2,
   },
   filterChipText: {
+    fontFamily: fonts.sans,
     fontSize: 13,
     color: theme.mutedForeground,
     fontWeight: '600',
@@ -579,6 +585,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   clearFiltersText: {
+    fontFamily: fonts.sans,
     fontSize: 13,
     color: theme.mutedForeground,
     fontWeight: '500',
@@ -593,6 +600,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   resultsText: {
+    fontFamily: fonts.sans,
     fontSize: 13,
     color: theme.mutedForeground,
     fontWeight: '500',
@@ -629,6 +637,7 @@ const styles = StyleSheet.create({
   },
   companyName: {
     flex: 1,
+    fontFamily: fonts.sans,
     fontSize: 18,
     fontWeight: '600',
     color: theme.foreground,
@@ -639,7 +648,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 8,
   },
   statusBadgeActive: {
     backgroundColor: `${theme.success}15`,
@@ -663,6 +672,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.mutedForeground,
   },
   statusText: {
+    fontFamily: fonts.sans,
     fontSize: 12,
     fontWeight: '600',
   },
@@ -691,6 +701,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     flex: 1,
+    fontFamily: fonts.sans,
     fontSize: 14,
     color: theme.foreground,
     lineHeight: 22,
@@ -714,6 +725,7 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
   },
   emptyText: {
+    fontFamily: fonts.sans,
     fontSize: 20,
     fontWeight: '600',
     color: theme.foreground,
@@ -721,6 +733,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   emptySubtext: {
+    fontFamily: fonts.sans,
     fontSize: 15,
     color: theme.mutedForeground,
     textAlign: 'center',
@@ -734,6 +747,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   loadMoreText: {
+    fontFamily: fonts.sans,
     fontSize: 14,
     color: theme.mutedForeground,
   },
@@ -742,6 +756,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   endText: {
+    fontFamily: fonts.sans,
     fontSize: 12,
     color: theme.mutedForeground,
   },
@@ -766,11 +781,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   statText: {
+    fontFamily: fonts.sans,
     fontSize: 15,
     fontWeight: '700',
     color: theme.foreground,
   },
   statLabel: {
+    fontFamily: fonts.sans,
     fontSize: 11,
     color: theme.mutedForeground,
     fontWeight: '500',

@@ -1,8 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { theme } from '../theme/colors';
+
+// Dark navigation theme so transitions never flash white.
+const navTheme: Theme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: theme.primary,
+    background: theme.background,
+    card: theme.background,
+    text: theme.foreground,
+    border: 'transparent',
+    notification: theme.indigo,
+  },
+};
 
 // Screens
 import LoginScreen from '../screens/LoginScreen';
@@ -51,7 +65,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,

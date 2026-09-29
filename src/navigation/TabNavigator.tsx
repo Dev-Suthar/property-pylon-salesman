@@ -1,7 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { theme } from '../theme/colors';
+import { fonts } from '../theme/typography';
+import PopTabBar from '../components/design/PopTabBar';
 
 // Screens
 import DashboardScreen from '../screens/DashboardScreen';
@@ -12,28 +13,18 @@ const Tab = createBottomTabNavigator();
 export default function TabNavigator() {
   return (
     <Tab.Navigator
+      tabBar={(props) => <PopTabBar {...props} />}
+      sceneContainerStyle={{ backgroundColor: theme.background }}
       screenOptions={{
         headerShown: true,
-        tabBarActiveTintColor: theme.primary,
-        tabBarInactiveTintColor: theme.mutedForeground,
-        tabBarStyle: {
-          backgroundColor: theme.card,
-          borderTopColor: theme.border,
-          borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
-        },
         headerStyle: {
-          backgroundColor: theme.card,
+          backgroundColor: theme.background,
         },
+        headerShadowVisible: false,
         headerTintColor: theme.foreground,
         headerTitleStyle: {
-          fontWeight: '600',
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
+          fontFamily: fonts.display,
+          fontWeight: '700',
         },
       }}
     >
@@ -43,9 +34,6 @@ export default function TabNavigator() {
         options={{
           title: 'Dashboard',
           headerShown: false, // Dashboard has its own custom header with logout
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="view-dashboard" size={size} color={color} />
-          ),
         }}
       />
       <Tab.Screen
@@ -54,9 +42,6 @@ export default function TabNavigator() {
         options={{
           title: 'History',
           headerShown: false, // CompanyHistoryScreen has its own custom header
-          tabBarIcon: ({ color, size }) => (
-            <Icon name="history" size={size} color={color} />
-          ),
         }}
       />
     </Tab.Navigator>

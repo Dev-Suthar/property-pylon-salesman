@@ -5,25 +5,20 @@
 
 import { Platform } from 'react-native';
 
-// Get the correct localhost URL based on platform
-const getLocalhostUrl = () => {
-  if (Platform.OS === 'android') {
-    const url = 'http://98.92.75.163:3000/api/v1';
-    if (__DEV__) {
-      console.log('📱 Android detected - Using API URL:', url);
-    }
-    return url;
-  }
-  const url = 'http://98.92.75.163:3000/api/v1';
-  if (__DEV__) {
-    console.log('📱 iOS detected - Using API URL:', url);
-  }
-  return url;
-};
+const REMOTE_API_URL = 'http://98.92.75.163:3000/api/v1';
 
-export const API_BASE_URL = __DEV__
-  ? getLocalhostUrl()
-  : 'http://98.92.75.163:3000/api/v1';
+/** Dev builds only: talk to the backend running on this machine (:3000). */
+export const USE_LOCAL_API = true;
+
+// Android emulator reaches the host machine via 10.0.2.2.
+const LOCAL_API_URL =
+  Platform.OS === 'android' ? 'http://10.0.2.2:3000/api/v1' : 'http://localhost:3000/api/v1';
+
+export const API_BASE_URL = __DEV__ && USE_LOCAL_API ? LOCAL_API_URL : REMOTE_API_URL;
+
+if (__DEV__) {
+  console.log(`📱 ${Platform.OS} - Using API URL:`, API_BASE_URL);
+}
 
 export const API_TIMEOUT = 30000; // 30 seconds
 

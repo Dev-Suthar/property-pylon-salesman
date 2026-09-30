@@ -5,7 +5,7 @@
 
 import { Platform } from 'react-native';
 
-const REMOTE_API_URL = 'http://98.92.75.163:3000/api/v1';
+const REMOTE_API_URL = 'https://api.dreamtobuy.com/api/v1';
 
 /** Dev builds only: talk to the backend running on this machine (:3000). */
 export const USE_LOCAL_API = true;
